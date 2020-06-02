@@ -35,6 +35,23 @@ class LoggingMix():
         return super(LoggingMix, self).__getattr__(name)
 
 
+class Broker():
+    def __init__(self):
+        self.broker_logger = LoggingMix(self)
+        self.mess = ''
+    def send_mess(self, message):
+        self.mess = message
+        broker_connection = pika.BlockingConnection(pika.ConnectionParameters(
+            host='127.0.0.1'))
+        broker_channel = broker_connection.channel()
+        broker_channel.queue_declare(queue="mess")
+        broker_channel.basic_publish(exchange='', routing_key="mess",
+                                     body=self.mess)
+        self.broker_logger.info(" [x] Sent to broker: %s" % str(self.mess))
+        broker_connection.close()
+
+
+
 class ServerProc(Process):
 
     def __init__(self, port):
@@ -148,14 +165,16 @@ class ServerThread(threading.Thread):
                                                            'outputs': outputs, 'adc': adc, 'ibutton': ibutton,
                                                            'params': params}},
                                         separators=(',', ':'), indent=4)
-        broker_connection = pika.BlockingConnection(pika.ConnectionParameters(
+        broker = Broker()
+        broker.send_mess(message_for_broker)
+        '''broker_connection = pika.BlockingConnection(pika.ConnectionParameters(
             host='127.0.0.1'))
         broker_channel = broker_connection.channel()
         broker_channel.queue_declare(queue="mess")
         broker_channel.basic_publish(exchange='', routing_key="mess",
                                      body=message_for_broker)
         self.serv_thread_logger.info(" [x] Sent to broker: %s" % str(message_for_broker))
-        broker_connection.close()
+        broker_connection.close()'''
 
 
 conf = configparser.RawConfigParser()
